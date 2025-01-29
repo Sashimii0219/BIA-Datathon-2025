@@ -1,0 +1,6 @@
+pandas
+contractions
+spacy
+pydantic==2.7.4
+crosslingual_coreference
+nltk
