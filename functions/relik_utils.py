@@ -2,17 +2,19 @@ import pandas as pd
 import spacy
 import time
 from relik import Relik
+from functions.data_cleaning import clean_relationship_type
 
 def extract_entity_relationship(text_list, relik):
     entities = []
     relationships = []
+
+    start_time = time.time()
+
     relik_out = relik(text_list, 
                       top_k = 3)
     print(relik_out)
     index = 1
     list_len = len(relik_out)
-
-    start_time = time.time()
 
     # Go through every sentence in one paragraph
     for sentence in relik_out:
@@ -34,16 +36,18 @@ def extract_entity_relationship(text_list, relik):
                                    for sublist in relationships for subject, label, object, confidence in sublist]
 
     # Create DataFrame
-    entities_df = pd.DataFrame(entities_list, columns=['Entity', 'Label'])
-    relationships_df = pd.DataFrame(relationships_list, columns=['Subject', 'Relationship', 'Object', 'Confidence'])
+    entities_df = pd.DataFrame(entities_list, columns=['entity', 'label'])
+    relationships_df = pd.DataFrame(relationships_list, columns=['subject', 'relationship', 'object', 'confidence'])
 
     # Keep unique entities
-    entities_df.drop('Label', axis=1, inplace=True)
-    entities_df.drop_duplicates(subset=['Entity'], inplace=True)
+    entities_df.drop('label', axis=1, inplace=True)
+    entities_df.drop_duplicates(subset=['entity'], inplace=True)
     entities_df = extract_entity_type(entities_df)
 
     end_time = time.time()
     print(f"Execution time: {end_time - start_time:.4f} seconds")
+
+    relationships_df['relationship'] = relationships_df['relationship'].apply(clean_relationship_type)
 
     return entities_df, relationships_df
 
