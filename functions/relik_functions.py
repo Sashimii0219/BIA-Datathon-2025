@@ -2,14 +2,13 @@ import pandas as pd
 import spacy
 import time
 from relik import Relik
-from relik.inference.data.objects import RelikOutput
 
 def extract_entity_relationship(text_list, relik):
     entities = []
     relationships = []
-    relik_out = relik(text_list, top_k = 3)
+    relik_out = relik(text_list, 
+                      top_k = 3)
     print(relik_out)
-    
     index = 1
     list_len = len(relik_out)
 
@@ -26,7 +25,9 @@ def extract_entity_relationship(text_list, relik):
         if len(triplets) != 0:
             rel_list = [(triplet.subject.text, triplet.label, triplet.object.text, triplet.confidence) for triplet in triplets]
             relationships.append(rel_list)
-    
+        
+        index += 1
+
     # Flatten and remove duplicates using a set
     entities_list = [(entity.lower(), label) for sublist in entities for entity, label in sublist]
     relationships_list = [(subject.lower(), label.lower(), object.lower(), float(confidence))
@@ -70,15 +71,3 @@ def extract_entity_type(entity_df):
     )
 
     return entity_df
-
-if __name__ == "__main__":
-    relik = Relik.from_pretrained("relik-ie/relik-relation-extraction-large")
-    merged_df = pd.read_csv('datasets/clean/merged_df.csv')
-
-    text_col = merged_df['coref_text'].tolist()[:2]
-
-    # For sentences in news_df['Text'].tolist()[:2]
-    entities_df, relationships_df = extract_entity_relationship(text_col, relik)
-    
-    print(entities_df)
-    print(relationships_df)
