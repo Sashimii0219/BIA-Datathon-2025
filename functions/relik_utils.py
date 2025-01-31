@@ -2,7 +2,7 @@ import pandas as pd
 import spacy
 import time
 from relik import Relik
-from functions.data_cleaning import clean_relationship_type
+from functions.utils import clean_relationship_type
 
 def extract_entity_relationship(text_list, relik):
     entities = []
@@ -39,10 +39,13 @@ def extract_entity_relationship(text_list, relik):
     entities_df = pd.DataFrame(entities_list, columns=['entity', 'label'])
     relationships_df = pd.DataFrame(relationships_list, columns=['subject', 'relationship', 'object', 'confidence'])
 
-    # Keep unique entities
+    # Keep unique entities and relationships
     entities_df.drop('label', axis=1, inplace=True)
     entities_df.drop_duplicates(subset=['entity'], inplace=True)
     entities_df = extract_entity_type(entities_df)
+    entities_df.fillna('UNDEFINED', inplace=True)
+
+    relationships_df.drop_duplicates(subset=['subject', 'relationship', 'object'], inplace=True)
 
     end_time = time.time()
     print(f"Execution time: {end_time - start_time:.4f} seconds")
@@ -53,25 +56,25 @@ def extract_entity_relationship(text_list, relik):
 
 def extract_entity_type(entity_df):
     # List to store extracted entities
-    entity_type = {"Entity":[],
-                  "Entity Type": []}
+    entity_type = {"entity":[],
+                  "entity_type": []}
     
     # Load spaCy's English model
     nlp = spacy.load("en_core_web_lg")
-    for entity in entity_df['Entity']:
+    for entity in entity_df['entity']:
         doc = nlp(entity)  # Process each word
         for ent in doc.ents:
-            entity_type['Entity'].append(ent.text)
-            entity_type['Entity Type'].append(ent.label_)
+            entity_type['entity'].append(ent.text)
+            entity_type['entity_type'].append(ent.label_)
 
     # Add entity type back to entity_df
     entity_df = entity_df.merge(
             pd.DataFrame({
-            "Entity":entity_type['Entity'],
-            "Entity Type": entity_type['Entity Type']}
+            "entity":entity_type['entity'],
+            "entity_type": entity_type['entity_type']}
                     ),
             how='left',
-            on='Entity'
+            on='entity'
     )
 
     return entity_df

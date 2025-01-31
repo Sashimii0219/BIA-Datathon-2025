@@ -1,6 +1,6 @@
 import pandas as pd
 import spacy, coreferee
-from functions.data_cleaning import coref_text, clean_text
+from functions.utils import coref_text, clean_text
 
 news_df = pd.read_excel('news_excerpts_parsed.xlsx')
 wikileaks_df = pd.read_excel('wikileaks_parsed.xlsx')
