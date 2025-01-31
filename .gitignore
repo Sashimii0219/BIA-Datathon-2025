@@ -53,9 +53,9 @@ TestResults/
 *.sqlite
 # OS generated files #
 ######################
-.DS_Store?
+.DS_Store
 ehthumbs.db
 Icon?
 Thumbs.db
-
+*.cpython-310.pyc
 *.ipynb
