@@ -35,8 +35,9 @@ if __name__ == "__main__":
     # relationships_df.to_csv('datasets/clean/relationships_df.csv',index=False)
 
     # URI examples: "neo4j://localhost", "neo4j+s://xxx.databases.neo4j.io"
-    URI = "neo4j+s://c428f489.databases.neo4j.io"
-    AUTH = ("neo4j", "DnXVA8ZWVpf5nHYvwgw_oJzRSYfDkUBhiK4yfSSED0U")
+
+    URI = "<URI-HERE>"
+    AUTH = ("USERNAME", "PASSWORD")
 
     # Initialize connection
     dbconn = Neo4jConnection(URI, AUTH[0], AUTH[1])
