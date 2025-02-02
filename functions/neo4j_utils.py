@@ -23,12 +23,12 @@ class Neo4jConnection:
                 query = f"""
                 MERGE (e:{entity_label} {{name: $name}})
                 """
-                session.run(query, name=row["entity"])
+
+                session.execute_write(lambda tx: tx.run(query, name=row["entity"], database_="neo4j"))
         
         print(f"Write completed! {len(entities_df)} entities added to database.")
 
-    def write_relationships(self, entities_df, relationships_df):
-        relationships_df =  add_entity_type(entities_df, relationships_df)
+    def write_relationships(self, relationships_df):
         print("Writing relationships to database...")
 
         with self.driver.session() as session:
@@ -40,12 +40,13 @@ class Neo4jConnection:
                 ON CREATE SET r.confidence = $confidence
                 """
 
-                session.run(
+                session.execute_write(lambda tx: tx.run(
                     query,
                     subject=row["subject"],
                     relationship=row["relationship"],
                     object=row["object"],
                     confidence=row["confidence"],
-                )
+                    database_="neo4j"
+                ))
 
         print(f"Write completed! {len(relationships_df)} relationships added to database.")

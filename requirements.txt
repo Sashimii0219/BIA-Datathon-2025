@@ -16,3 +16,4 @@ beautifulsoup4==4.11.1
 bs4==0.0.2
 openpyxl
 neo4j
+python-dotenv
