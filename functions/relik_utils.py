@@ -1,10 +1,10 @@
 import pandas as pd
 import spacy
 import time
-from relik import Relik
-from functions.utils import clean_relationship_type
+from relik import Relik 
+from functions.utils import clean_relationship_type, add_entity_type
 
-def extract_entity_relationship(text_list, relik):
+def relik_extract_entity_relationship(text_list, relik):
     entities = []
     relationships = []
 
@@ -51,7 +51,8 @@ def extract_entity_relationship(text_list, relik):
     print(f"Execution time: {end_time - start_time:.4f} seconds")
 
     relationships_df['relationship'] = relationships_df['relationship'].apply(clean_relationship_type)
-
+    relationships_df =  add_entity_type(entities_df, relationships_df)
+    
     return entities_df, relationships_df
 
 def extract_entity_type(entity_df):
