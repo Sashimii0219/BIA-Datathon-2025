@@ -1,0 +1,22 @@
+# Use an official Python runtime as a parent image
+FROM python:3.10.16
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy requirements file and install dependencies
+COPY requirements/preprocess.txt .
+RUN pip install --no-cache-dir -r preprocess.txt
+
+# Download the SpaCy language model
+RUN python -m spacy download en_core_web_sm
+RUN python -m coreferee install en
+
+# Copy the preprocessing script and utility functions
+COPY data_preprocessing.py .
+COPY functions/ functions/
+COPY .env .env
+
+
+# Run the script when the container launches
+CMD ["python", "data_preprocessing.py"]

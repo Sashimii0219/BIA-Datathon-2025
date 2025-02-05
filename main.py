@@ -71,6 +71,6 @@ if __name__ == "__main__":
         relationships_df = pd.read_csv('./datasets/clean/relationships_df.csv')
 
         dbconn.write_entities(entities_df)
-        dbconn.write_relationships(entities_df, relationships_df)
+        dbconn.write_relationships(relationships_df)
 
         dbconn.close()
