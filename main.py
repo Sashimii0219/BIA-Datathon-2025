@@ -46,22 +46,22 @@ if __name__ == "__main__":
     PASSWORD = os.getenv("PASSWORD")
     AUTH = (USERNAME, PASSWORD) 
 
-    # merged_df = pd.read_csv('datasets/clean/merged_df.csv')
-    # text_col = merged_df['coref_text'].tolist()
+    merged_df = pd.read_csv('datasets/clean/merged_df.csv')
+    text_col = merged_df['coref_text'].tolist()
 
-    # if method == 'relik':    
-    #     model = Relik.from_pretrained("relik-ie/relik-relation-extraction-large")
-    #     entities_df, relationships_df = relik_extract_entity_relationship(text_col, model)
+    if method == 'relik':    
+        model = Relik.from_pretrained("relik-ie/relik-relation-extraction-large")
+        entities_df, relationships_df = relik_extract_entity_relationship(text_col, model)
 
-    # elif method == 'mrebel':
-    #     # Load model and tokenizer
-    #     tokenizer = AutoTokenizer.from_pretrained("Babelscape/mrebel-large", src_lang="en_XX", tgt_lang="tp_XX") 
-    #     model = AutoModelForSeq2SeqLM.from_pretrained("Babelscape/mrebel-large")
+    elif method == 'mrebel':
+        # Load model and tokenizer
+        tokenizer = AutoTokenizer.from_pretrained("Babelscape/mrebel-large", src_lang="en_XX", tgt_lang="tp_XX") 
+        model = AutoModelForSeq2SeqLM.from_pretrained("Babelscape/mrebel-large")
 
-    #     entities_df, relationships_df = rebel_extract_entity_relationship(text_col, tokenizer, model)
+        entities_df, relationships_df = rebel_extract_entity_relationship(text_col, tokenizer, model)
     
-    # else:
-    #     raise Exception("No such model!")
+    else:
+        raise Exception("No such model!")
 
     if upload_auradb:
         # Initialize connection to Neo4j

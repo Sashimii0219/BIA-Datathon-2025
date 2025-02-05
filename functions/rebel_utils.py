@@ -3,6 +3,7 @@ import pandas as pd
 from functions.utils import clean_relationship_type
 from io import StringIO
 
+
 def extract_triplets_typed(text):
     triplets = []
     relation = ''
