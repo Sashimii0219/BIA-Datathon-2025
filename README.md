@@ -9,6 +9,7 @@
 6. Pipeline Component 4 - From S3, upload the output to Neo4j Managed Graph Database AuraDB, for further insight explorations using Neo4j suite of visualisation tools.
 <br>
 <b>Files Overview:</b>
+
 ```
 📦 Project Root
 ├── 📂 Dockerfiles               # Contains Dockerfiles for different components
