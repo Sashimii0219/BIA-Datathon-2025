@@ -1,13 +1,14 @@
 # BIA-Datathon-2025
 <b>This repository contains the project for the BIA Datathon 2025. The main objective is to create a serverless end-to-end solution architecture that will do the following:</b>
+<b>This repository contains the project for the BIA Datathon 2025. The main objective is to create a serverless end-to-end solution architecture that will do the following:</b>
 1. Automate data ingestion through 3 ways - Scheduled web scraping, Extracting data from internal pdf files using OCR, and manually calling the API to upload data.
 2. Daily schedule for lambda function to check for changes in S3 bucket, which will then trigger the pipeline to run.
 3. Pipeline Component 1 - Pre-process the text data to feed into the pre-trained model.
 4. Pipeline Component 2 - Extract Entity-Relationship using specified pre-trained model, saving the output to S3.
 5. Pipeline Component 3 - Do data validation and data quality check on the model output.
 6. Pipeline Component 4 - From S3, upload the output to Neo4j Managed Graph Database AuraDB, for further insight explorations using Neo4j suite of visualisation tools.
-
-Files Overview:
+<br>
+<b>Files Overview:</b>
 ```
 📦 Project Root
 ├── 📂 Dockerfiles               # Contains Dockerfiles for different components
@@ -43,6 +44,8 @@ Files Overview:
 ├── README.md                    # Project documentation
 ```
 
+<br>
+<b>To replicate this project:</b>
 1. Clone the repository.
 2. Install dependencies via `pip install -r requirements.txt`.
 3. Run the `main.py` script, which will do the following:
@@ -103,6 +106,10 @@ As the components in this pipeline are modular, to makes any changes you may mak
 
 <b>To utilise models not included in this repository:</b>
 
+<br>
+As the components in this pipeline are modular, to makes any changes you may make edits to the json text in XXX.
+<br>
+<b>To utilise models not included in this repository:</b>
 - Ensure that there are NO conflict in dependencies.***
 - Create a `<model>_utils.py` to include all the relevant functions
 - Adhere to the DataFrame format (`entities_df`, `relationships_df`) and output format (.csv)
