@@ -1,12 +1,10 @@
-import argparse
 import pandas as pd
-from functions.utils import clean_text
+import argparse
 from functions.relik_utils import *
 from functions.rebel_utils import *
-from functions.neo4j_utils import Neo4jConnection
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-
 from dotenv import load_dotenv
+from functions.aws_utils import S3
 import os
 import time
 
@@ -16,39 +14,32 @@ parser = argparse.ArgumentParser(description="Process some inputs.")
 # Define arguments
 parser.add_argument(
     "-m",
-    "--method",
-    type=str,
+    "--method", 
+    type=str, 
     default='relik',
     help="Currently Available Methods: relik, mrebel"
-    )
-
-# Define arguments
-parser.add_argument(
-    "-up",
-    "--upload_auradb", 
-    type=bool, 
-    default=True,
-    help="Upload to AuraDB"
     )
 
 # Parse arguments
 args = parser.parse_args()
 method = args.method
-upload_auradb = args.upload_auradb
 
 if __name__ == "__main__":
-
     load_dotenv()
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 
-    # URI examples: "neo4j://localhost", "neo4j+s://xxx.databases.neo4j.io"
-    URI = os.getenv("URI")
-    USERNAME = os.getenv("USER_NAME")
-    PASSWORD = os.getenv("PASSWORD")
-    AUTH = (USERNAME, PASSWORD) 
+    # Create S3 instance
+    s3 = S3(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+            aws_secret_access_key=AWS_SECRET_KEY)
 
-    merged_df = pd.read_csv('datasets/clean/merged_df.csv')
-    text_col = merged_df['coref_text'].tolist()
+    # Read data from S3
+    input_data = s3.read_from_s3('datathon2025',
+                              'data/clean-data/merged_df.csv')
+    text_col = input_data['coref_text'].tolist()
 
+    start_time = time.time()
+    # Choose model
     if method == 'relik':    
         model = Relik.from_pretrained("relik-ie/relik-relation-extraction-large")
         entities_df, relationships_df = relik_extract_entity_relationship(text_col, model)
@@ -62,15 +53,17 @@ if __name__ == "__main__":
     
     else:
         raise Exception("No such model!")
+    
+    end_time = time.time()
+    print(f"Execution time: {end_time - start_time:.4f} seconds")
 
-    if upload_auradb:
-        # Initialize connection to Neo4j
-        dbconn = Neo4jConnection(URI, AUTH[0], AUTH[1])
+    # Upload output back to S3
+    s3.upload_to_s3('datathon2025',
+            'data/model-output',
+            f'entities_df_{method}.csv',
+            entities_df)
 
-        entities_df = pd.read_csv('./datasets/clean/entities_df.csv')
-        relationships_df = pd.read_csv('./datasets/clean/relationships_df.csv')
-
-        dbconn.write_entities(entities_df)
-        dbconn.write_relationships(relationships_df)
-
-        dbconn.close()
+    s3.upload_to_s3('datathon2025',
+            'data/model-output',
+            f'relationships_df_{method}.csv',
+            relationships_df)

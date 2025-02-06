@@ -1,5 +1,4 @@
 from neo4j import GraphDatabase
-from functions.utils import add_entity_type
 
 # Create a connection class
 class Neo4jConnection:
