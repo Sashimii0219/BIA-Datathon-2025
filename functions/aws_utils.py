@@ -1,10 +1,12 @@
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
+import botocore
 from dotenv import load_dotenv
 import subprocess
 import os
 from io import StringIO
 import pandas as pd
+import re
 
 
 # Connection class
@@ -17,14 +19,17 @@ class AWSConnection:
             aws_secret_access_key=aws_secret_key,
             region_name=region_name
             )
-            print("Connection to S3 Established!")
+            print("Connection to AWS Established!")
         except (NoCredentialsError, PartialCredentialsError) as e:
             print(f"Error: {e}")
             self.session = None
 
+        self.region_name = region_name
+
     # Retrieve client for particular service E.g. S3, ECS, EC2
     def get_client(self, client_name):
         if self.session:
+            print(f"{client_name.upper()} session successfully initialized.")
             return self.session.client(client_name)
         else:
             raise Exception("AWS session not initialized properly.")
@@ -33,8 +38,7 @@ class AWSConnection:
 class S3:
     def __init__(self, aws_access_key_id, aws_secret_access_key):
         aws_connection = AWSConnection(aws_access_key_id, aws_secret_access_key)
-        self.s3 = aws_connection.get_client("s3")
-
+        self.s3 = aws_connection.get_client("s3")  
     
     # List all buckets
     def list_buckets(self):
@@ -101,22 +105,46 @@ class ECS:
         aws_connection = AWSConnection(aws_access_key_id, aws_secret_access_key)
         self.ecs_client = aws_connection.get_client("ecs")
         self.ecr_client = aws_connection.get_client("ecr")
+        self.region = aws_connection.region_name
+    
+    def get_ecr_login_password(self):
+        """Retrieve ECR login password using boto3."""
+        response = self.ecr_client.get_authorization_token()
+        auth_data = response['authorizationData'][0]
+        login_password = auth_data['authorizationToken']
+
+        return login_password
     
     def create_ecr_repository(self, repo_name):
         """Create an ECR repository if it doesn't exist."""
         try:
-            response = self.ecr_client.create_repository(repositoryName=repo_name)
-            print(f"Repository {repo_name} created.")
+            # Check if the repository already exists
+            response = self.ecr_client.describe_repositories(repositoryNames=[repo_name])
+            repo_uri = response["repositories"][0]["repositoryUri"]
+            print(f"Repository {repo_name} already exists: {repo_uri}")
+            return repo_uri
+        
         except ClientError as e:
-            print(f"Error creating repository: {e}")
-            return None
-        return response['repository']['repositoryUri']
+            if e.response["Error"]["Code"] == "RepositoryNotFoundException":
+                try:
+                    # Create the repository if it doesn't exist
+                    response = self.ecr_client.create_repository(repositoryName=repo_name)
+                    repo_uri = response["repository"]["repositoryUri"]
+                    print(f"Repository {repo_name} created: {repo_uri}")
+                    return repo_uri
+                
+                except ClientError as create_error:
+                    print(f"Error creating repository: {create_error}")
+                    return None
+            else:
+                print(f"Error checking repository: {e}")
+                return None
     
-    def build_docker_image(self, image_name, dockerfile_path='./Dockerfiles'):
+    def build_docker_image(self, image_name, dockerfile_path):
         """Build the Docker image using the Dockerfile."""
         print(f"Building Docker image: {image_name}")
         try:
-            subprocess.check_call(['docker', 'build', '-t', image_name, dockerfile_path])
+            subprocess.check_call(['docker', 'build', '-t', image_name, '-f', dockerfile_path, '.'])
         except subprocess.CalledProcessError as e:
             print(f"Error building Docker image: {e}")
             return False
@@ -127,8 +155,14 @@ class ECS:
         try:
             # Login to ECR
             print("Logging into ECR...")
-            subprocess.check_call(['aws', 'ecr', 'get-login-password', '--region', self.region, '|', 'docker', 'login', '--username', 'AWS', '--password-stdin', ecr_repo_uri])
 
+            login_password = self.get_ecr_login_password()
+
+            subprocess.run(
+                ['docker', 'login', '--username', 'AWS', '--password-stdin', ecr_repo_uri],
+                input=login_password.encode("utf-8")
+            )
+            print("CHECKPOINT")
             # Tag the image
             docker_tag = f"{ecr_repo_uri}:{image_name}"
             subprocess.check_call(['docker', 'tag', image_name, docker_tag])
@@ -141,21 +175,31 @@ class ECS:
             return False
         return True
     
-    def register_task_definition(self, task_name, image_uri, cpu='256', memory='512', container_name='container'):
+    def register_task_definition(self, task_name, image_uri, container_name='container'):
         """Register a new ECS Task Definition."""
         try:
             response = self.ecs_client.register_task_definition(
                 family=task_name,
-                cpu=cpu,
-                memory=memory,
+                cpu='256',
+                memory='512',
                 networkMode='awsvpc',
+                requiresCompatibilities = ["FARGATE"],
+                executionRoleArn='hackathon2025-task-executor',
                 containerDefinitions=[
                     {
                         'name': container_name,
                         'image': image_uri,
                         'essential': True,
-                        'memory': memory,
-                        'cpu': cpu,
+                        'memory': 512,
+                        'cpu': 256,
+                        'essential': True,
+                        'logConfiguration': {
+                        'logDriver': 'awslogs',
+                        'options': {
+                        'awslogs-group': '/ecs/datathon2025-log-group',
+                        'awslogs-region': self.region,
+                        'awslogs-stream-prefix': 'ecs'
+                        }}
                     },
                 ]
             )
@@ -164,56 +208,92 @@ class ECS:
         except ClientError as e:
             print(f"Error registering task definition: {e}")
             return None
-
-    def create_ecs_service(self, cluster_name, service_name, task_definition_arn, desired_count=1):
-        """Create an ECS Service to run the task."""
-        try:
-            response = self.ecs_client.create_service(
-                cluster=cluster_name,
-                serviceName=service_name,
-                taskDefinition=task_definition_arn,
-                desiredCount=desired_count,
-                launchType='FARGATE',
-                networkConfiguration={
-                    'awsvpcConfiguration': {
-                        'subnets': ['subnet-xxxxxxxx'],  # Replace with actual subnet ID
-                        'assignPublicIp': 'ENABLED'
-                    }
-                }
-            )
-            print(f"ECS service {service_name} created.")
-            return response['service']['serviceArn']
-        except ClientError as e:
-            print(f"Error creating ECS service: {e}")
-            return None
-
-    def deploy(self, repo_name, image_name, task_name, cluster_name, service_name):
+        
+    def deploy(self, repo_name, image_name, task_name, cluster_name, dockerfile_path):
         """Full deploy pipeline: Build Docker image, push to ECR, and deploy to ECS."""
         ecr_repo_uri = self.create_ecr_repository(repo_name)
         if not ecr_repo_uri:
             print("Failed to create or get ECR repository.")
             return
 
-        if not self.build_docker_image(image_name):
+        if not self.build_docker_image(image_name, dockerfile_path):
             print("Failed to build Docker image.")
             return
+
+        print("ECR_REPO_URI: ", ecr_repo_uri)
 
         if not self.push_to_ecr(image_name, ecr_repo_uri):
             print("Failed to push Docker image to ECR.")
             return
 
         task_definition_arn = self.register_task_definition(task_name, f"{ecr_repo_uri}:{image_name}")
+
+        return task_definition_arn
         if not task_definition_arn:
             print("Failed to register ECS task definition.")
             return
 
-        service_arn = self.create_ecs_service(cluster_name, service_name, task_definition_arn)
-        if service_arn:
-            print(f"Deployment successful: {service_arn}")
-        else:
-            print("Failed to create ECS service.")
 
+class StepFunction:
+    def __init__(self, aws_access_key_id, aws_secret_access_key):
+        aws_connection = AWSConnection(aws_access_key_id, aws_secret_access_key)
+        self.sf_client = aws_connection.get_client("stepfunctions")
+        self.region = aws_connection.region_name    
 
+    def create_step_function(self, state_machine_definition, role_arn):
+        # Create the state machine
+        try:
+            response = self.sf_client.create_state_machine(
+                name="Datathon2025StateMachine",
+                definition=state_machine_definition,
+                roleArn=role_arn
+            )
+
+            return response['stateMachineArn']
+        
+        except Exception as e:
+            if 'StateMachineAlreadyExists' in str(e): 
+                
+                arn_match = re.search(r"State Machine Already Exists: '([^']+)'", str(e))
+                if arn_match:
+                    state_machine_arn = arn_match.group(1)
+
+                self.sf_client.update_state_machine(
+                stateMachineArn=state_machine_arn,
+                # stateMachineArn="arn:aws:states:ap-southeast-1:484907528704:stateMachine:Datathon2025StateMachine",
+                definition=state_machine_definition
+                )
+
+                return state_machine_arn
+    
+    def start_step_function_execution(self, state_machine_arn, input_data={}):
+        """Start a new Step Functions execution."""
+        try:
+            response = self.sf_client.start_execution(
+                stateMachineArn=state_machine_arn,
+                input=str(input_data)  # Pass any input you want to provide to the state machine
+            )
+            print(f"Started Step Functions execution with ARN: {response['executionArn']}")
+            return response['executionArn']
+        
+        except Exception as e:
+            print(f"Error starting Step Functions execution: {e}")
+            return None
+        
+    def check_execution_status(self, execution_arn):
+        """Check the status of a running Step Functions execution."""
+        try:
+            response = self.sf_client.describe_execution(
+                executionArn=execution_arn
+            )
+            status = response['status']
+            print(f"Execution status: {status}")
+            return status
+            
+        except Exception as e:
+            print(f"Error getting execution status: {e}")
+            return None
+        
 # Usage
 if __name__ == "__main__":
 
@@ -221,14 +301,50 @@ if __name__ == "__main__":
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
     
-    # deployer = ECS(aws_access_key_id=AWS_ACCESS_KEY_ID, 
-    #                aws_secret_access_key=AWS_SECRET_KEY)
+    deployer = ECS(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+                   aws_secret_access_key=AWS_SECRET_KEY)
+    
+    task_definition_arn = deployer.deploy(
+        repo_name="datathon2025",  # ECR repository name
+        image_name="preprocess",  # Docker image name
+        dockerfile_path="./Dockerfiles/Dockerfile.preprocess",
+        task_name="datathon-preprocess",  # ECS task definition name
+        cluster_name="datathon2025-cluster"  # ECS cluster name
+    )
 
-    # deployer.deploy(
-    #     repo_name="datathon2025-pipeline",  # ECR repository name
-    #     image_name="datathon2025:preprocess",  # Docker image name
-    #     task_name="datathon-preprocess",  # ECS task definition name
-    #     cluster_name="datathon2025-cluster",  # ECS cluster name
-    #     service_name="datathon-preprocess-service"  # ECS service name
-    # )
+    print(task_definition_arn)
+    cluster_name='datathon2025-cluster'
+    subnet_id='subnet-04676f82c6c4baf59'
+
+    state_machine_definition = f'''
+    {{
+    "Comment": "State Machine to run an ECS task",
+    "StartAt": "RunEcsTask",
+    "States": {{
+        "RunEcsTask": {{
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {{
+                "Cluster": "{cluster_name}",
+                "TaskDefinition": "{task_definition_arn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {{
+                    "AwsvpcConfiguration": {{
+                        "Subnets": ["{subnet_id}"],
+                        "AssignPublicIp": "ENABLED"
+                    }}
+                }}
+            }},
+            "End": true
+        }}
+    }}
+    }}'''
+    print(state_machine_definition)
+    sf = StepFunction(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+                   aws_secret_access_key=AWS_SECRET_KEY)
+    
+    state_machine_arn = sf.create_step_function(state_machine_definition,
+                            'arn:aws:iam::484907528704:role/StepFunctionsExecutionRole')
+    
+    sf.start_step_function_execution(state_machine_arn)
         
