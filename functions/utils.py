@@ -1,8 +1,9 @@
-import spacy, coreferee
+import spacy
 import pandas as pd
 import re
 
 def coref_text(coref_nlp, text):
+    import coreferee
     coref_doc = coref_nlp(text)
     resolved_text = ""
 

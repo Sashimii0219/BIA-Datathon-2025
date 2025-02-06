@@ -1,6 +1,5 @@
 import pandas as pd
 import spacy
-import time
 from relik import Relik 
 from functions.utils import clean_relationship_type, add_entity_type
 
@@ -8,11 +7,9 @@ def relik_extract_entity_relationship(text_list, relik):
     entities = []
     relationships = []
 
-    start_time = time.time()
-
     relik_out = relik(text_list, 
                       top_k = 3)
-    print(relik_out)
+
     index = 1
     list_len = len(relik_out)
 
@@ -47,9 +44,6 @@ def relik_extract_entity_relationship(text_list, relik):
 
     relationships_df.drop_duplicates(subset=['subject', 'relationship', 'object'], inplace=True)
 
-    end_time = time.time()
-    print(f"Execution time: {end_time - start_time:.4f} seconds")
-
     relationships_df['relationship'] = relationships_df['relationship'].apply(clean_relationship_type)
     relationships_df =  add_entity_type(entities_df, relationships_df)
     
@@ -61,7 +55,7 @@ def extract_entity_type(entity_df):
                   "entity_type": []}
     
     # Load spaCy's English model
-    nlp = spacy.load("en_core_web_lg")
+    nlp = spacy.load("en_core_web_sm")
     for entity in entity_df['entity']:
         doc = nlp(entity)  # Process each word
         for ent in doc.ents:

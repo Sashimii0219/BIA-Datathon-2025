@@ -7,7 +7,7 @@ from io import StringIO
 import pandas as pd
 
 
-# Create a connection class
+# Connection class
 class AWSConnection:
     def __init__(self, aws_access_key_id, aws_secret_key, region_name='ap-southeast-1'):
 
@@ -22,6 +22,7 @@ class AWSConnection:
             print(f"Error: {e}")
             self.session = None
 
+    # Retrieve client for particular service E.g. S3, ECS, EC2
     def get_client(self, client_name):
         if self.session:
             return self.session.client(client_name)
@@ -34,7 +35,8 @@ class S3:
         aws_connection = AWSConnection(aws_access_key_id, aws_secret_access_key)
         self.s3 = aws_connection.get_client("s3")
 
-
+    
+    # List all buckets
     def list_buckets(self):
         try:
             # List S3 buckets
@@ -45,8 +47,9 @@ class S3:
             return []
         
 
+    # List all folders in specific buckets
     def list_folders(self, bucket_name):
-        # List objects with a prefix (simulates folder structure)
+        # List objects with a prefix
         response = self.s3.list_objects_v2(Bucket=bucket_name, Delimiter="/")
 
         # Extract folder names from CommonPrefixes
@@ -55,6 +58,7 @@ class S3:
         print("Folders:", folders)
 
 
+    # Upload files to S3
     def upload_to_s3(self, bucket_name, prefix, file_name, df):
 
         # file_path e.g. clean_data/
@@ -62,12 +66,13 @@ class S3:
         # Create an in-memory buffer
         csv_buffer = StringIO()
 
-        # Write the DataFrame to the buffer
+        # Write the df to the buffer
         df.to_csv(csv_buffer, index=False)
 
         s3_file_path = f"{prefix}/{file_name}"
 
         try:
+            # Uploading file
             self.s3.put_object(Bucket=bucket_name, Key=s3_file_path, Body=csv_buffer.getvalue())
             print(f"CSV file '{file_name}' has been uploaded to S3 at '{s3_file_path}'")
 
@@ -75,6 +80,8 @@ class S3:
             print(f"Error uploading CSV to S3: {e}")
 
 
+
+    # Read file from S3
     def read_from_s3(self, bucket_name, file_path):
         try:
             response = self.s3.get_object(Bucket=bucket_name, Key=file_path)
