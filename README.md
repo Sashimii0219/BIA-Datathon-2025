@@ -138,6 +138,7 @@ This repository contains the project for the BIA Datathon 2025. The main objecti
 6. Pipeline Component 4 - From S3, upload the output to Neo4j Managed Graph Database AuraDB, for further insight explorations using Neo4j suite of visualisation tools.
 
 Files Overview:
+```
 📦 Project Root
 ├── 📂 Dockerfiles               # Contains Dockerfiles for different components
 │   ├── Dockerfile.model         # Dockerfile for model container
@@ -168,11 +169,12 @@ Files Overview:
 ├── upload_to_neo4j.py           # Script to upload data to Neo4j
 ├── requirements.txt             # Dependencies for running the main script
 ├── README.md                    # Project documentation
+```
 
 To replicate this project:
 1. Clone the repository.
-2. Install dependencies via pip install -r requirements.txt.
-3. Run the main.py script, which will do the following:
+2. Install dependencies via `pip install -r requirements.txt`.
+3. Run the `main.py` script, which will do the following:
   -  Creates the images required for pipeline to work
   -  Initializes the step function
   -  Creates the images for the lambda functions, including the one that triggers the pipeline daily.
@@ -182,7 +184,7 @@ As the components in this pipeline are modular, to makes any changes you may mak
 
 To utilise models not included in this repository:
 - Ensure that there are NO conflict in dependencies.***
-- Create a <model>_utils.py to include all the relevant functions
-- Adhere to the DataFrame format (entities_df, relationships_df) and output format (.csv)
-- Include the initialization of the model in model.py
-- Edit the '-m' parameter in Dockerfile.model to the model of your choice
+- Create a `<model>_utils.py` to include all the relevant functions
+- Adhere to the DataFrame format (`entities_df`, `relationships_df`) and output format (.csv)
+- Include the initialization of the model in `model.py`
+- Edit the `'-m'` parameter in `Dockerfile.model` to the model of your choice
