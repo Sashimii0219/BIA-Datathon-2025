@@ -136,8 +136,8 @@ This repository contains the project for the BIA Datathon 2025. The main objecti
 4. Pipeline Component 2 - Validate the data to ensure XXX
 5. Pipeline Component 3 - Extract Entity-Relationship using specified pre-trained model, saving the output to S3.
 6. Pipeline Component 4 - From S3, upload the output to Neo4j Managed Graph Database AuraDB, for further insight explorations using Neo4j suite of visualisation tools.
-
-Files Overview:
+<br>
+<b>Files Overview:</b>
 ```
 📦 Project Root
 ├── 📂 Dockerfiles               # Contains Dockerfiles for different components
@@ -170,8 +170,8 @@ Files Overview:
 ├── requirements.txt             # Dependencies for running the main script
 ├── README.md                    # Project documentation
 ```
-
-To replicate this project:
+<br>
+<b>To replicate this project:</b>
 1. Clone the repository.
 2. Install dependencies via `pip install -r requirements.txt`.
 3. Run the `main.py` script, which will do the following:
@@ -179,10 +179,10 @@ To replicate this project:
   -  Initializes the step function
   -  Creates the images for the lambda functions, including the one that triggers the pipeline daily.
 4. Set up Amazon EventBridge Schedule and set target to the lambda function image created in previous step.
-
+<br>
 As the components in this pipeline are modular, to makes any changes you may make edits to the json text in XXX.
-
-To utilise models not included in this repository:
+<br>
+<b>To utilise models not included in this repository:</b>
 - Ensure that there are NO conflict in dependencies.***
 - Create a `<model>_utils.py` to include all the relevant functions
 - Adhere to the DataFrame format (`entities_df`, `relationships_df`) and output format (.csv)
