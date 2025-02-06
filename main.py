@@ -1,10 +1,6 @@
 import argparse
 import pandas as pd
-from functions.utils import clean_text
-from functions.relik_utils import *
-from functions.rebel_utils import *
-from functions.neo4j_utils import Neo4jConnection
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from functions.aws_utils import *
 
 from dotenv import load_dotenv
 import os
@@ -39,38 +35,103 @@ upload_auradb = args.upload_auradb
 if __name__ == "__main__":
 
     load_dotenv()
-
-    # URI examples: "neo4j://localhost", "neo4j+s://xxx.databases.neo4j.io"
-    URI = os.getenv("URI")
-    USERNAME = os.getenv("USER_NAME")
-    PASSWORD = os.getenv("PASSWORD")
-    AUTH = (USERNAME, PASSWORD) 
-
-    merged_df = pd.read_csv('datasets/clean/merged_df.csv')
-    text_col = merged_df['coref_text'].tolist()
-
-    if method == 'relik':    
-        model = Relik.from_pretrained("relik-ie/relik-relation-extraction-large")
-        entities_df, relationships_df = relik_extract_entity_relationship(text_col, model)
-
-    elif method == 'mrebel':
-        # Load model and tokenizer
-        tokenizer = AutoTokenizer.from_pretrained("Babelscape/mrebel-large", src_lang="en_XX", tgt_lang="tp_XX") 
-        model = AutoModelForSeq2SeqLM.from_pretrained("Babelscape/mrebel-large")
-
-        entities_df, relationships_df = rebel_extract_entity_relationship(text_col, tokenizer, model)
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
     
-    else:
-        raise Exception("No such model!")
+    deployer = ECS(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+                   aws_secret_access_key=AWS_SECRET_KEY)
+    
+    sf = StepFunction(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+                   aws_secret_access_key=AWS_SECRET_KEY)
+    
+    preprocess_task_definition_arn = deployer.deploy(
+        repo_name="datathon2025",  # ECR repository name
+        image_name="preprocess",  # Docker image name
+        dockerfile_path="./Dockerfiles/Dockerfile.preprocess",
+        task_name="datathon-preprocess",  # ECS task definition name
+        cluster_name="datathon2025-cluster"  # ECS cluster name
+    )
 
-    if upload_auradb:
-        # Initialize connection to Neo4j
-        dbconn = Neo4jConnection(URI, AUTH[0], AUTH[1])
+    model_task_definition_arn = deployer.deploy(
+        repo_name="datathon2025",  # ECR repository name
+        image_name="preprocess",  # Docker image name
+        dockerfile_path="./Dockerfiles/Dockerfile.model",
+        task_name="datathon-model",  # ECS task definition name
+        cluster_name="datathon2025-cluster"  # ECS cluster name
+    )
 
-        entities_df = pd.read_csv('./datasets/clean/entities_df.csv')
-        relationships_df = pd.read_csv('./datasets/clean/relationships_df.csv')
+    neo4j_task_definition_arn = deployer.deploy(
+        repo_name="datathon2025",  # ECR repository name
+        image_name="preprocess",  # Docker image name
+        dockerfile_path="./Dockerfiles/Dockerfile.neo4j",
+        task_name="datathon-model",  # ECS task definition name
+        cluster_name="datathon2025-cluster"  # ECS cluster name
+    )
 
-        dbconn.write_entities(entities_df)
-        dbconn.write_relationships(relationships_df)
+    print(task_definition_arn)
+    cluster_name='datathon2025-cluster'
+    subnet_id='subnet-04676f82c6c4baf59'
 
-        dbconn.close()
+    state_machine_definition = f'''
+    {{
+    "Comment": "State Machine to run an ECS task",
+    "StartAt": "RunEcsTask",
+    "States": {{
+        "RunEcsTask_Preprocess": {{
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {{
+                "Cluster": "{cluster_name}",
+                "TaskDefinition": "{preprocess_task_definition_arn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {{
+                    "AwsvpcConfiguration": {{
+                        "Subnets": ["{subnet_id}"],
+                        "AssignPublicIp": "ENABLED"
+                    }}
+                }}
+            }},
+            "Next": RunEcsTask_Model
+        }},
+        "RunEcsTask_Model": {{
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {{
+                "Cluster": "{cluster_name}",
+                "TaskDefinition": "{model_task_definition_arn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {{
+                    "AwsvpcConfiguration": {{
+                        "Subnets": ["{subnet_id}"],
+                        "AssignPublicIp": "ENABLED"
+                    }}
+                }}
+            }},
+            "Next": RunEcsTask_Neo4j
+        }},
+        "RunEcsTask_Neo4j": {{
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {{
+                "Cluster": "{cluster_name}",
+                "TaskDefinition": "{neo4j_task_definition_arn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {{
+                    "AwsvpcConfiguration": {{
+                        "Subnets": ["{subnet_id}"],
+                        "AssignPublicIp": "ENABLED"
+                    }}
+                }}
+            }},
+            "End": true
+        }},
+    }}
+    }}'''
+
+    sf = StepFunction(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+                   aws_secret_access_key=AWS_SECRET_KEY)
+    
+    state_machine_arn = sf.create_step_function(state_machine_definition,
+                            'arn:aws:iam::484907528704:role/StepFunctionsExecutionRole')
+    
+    sf.start_step_function_execution(state_machine_arn)

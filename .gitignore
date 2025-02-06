@@ -60,3 +60,4 @@ Icon?
 Thumbs.db
 *.cpython-310.pyc
 *.ipynb
+.ipynb_checkpoints/
