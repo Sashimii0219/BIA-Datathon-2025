@@ -43,7 +43,9 @@
 ```
 
 <br>
+
 <b>To replicate this project:</b>
+
 1. Clone the repository.
 2. Install dependencies via `pip install -r requirements.txt`.
 3. Run the `main.py` script, which will do the following:
@@ -51,10 +53,15 @@
   -  Initializes the step function
   -  Creates the images for the lambda functions, including the one that triggers the pipeline daily.
 4. Set up Amazon EventBridge Schedule and set target to the lambda function image created in previous step.
+
 <br>
+
 As the components in this pipeline are modular, to makes any changes you may make edits to the json text in XXX.
+
 <br>
+
 <b>To utilise models not included in this repository:</b>
+
 - Ensure that there are NO conflict in dependencies.***
 - Create a `<model>_utils.py` to include all the relevant functions
 - Adhere to the DataFrame format (`entities_df`, `relationships_df`) and output format (.csv)
