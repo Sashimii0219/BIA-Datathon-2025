@@ -7,7 +7,9 @@
 4. Pipeline Component 2 - Extract Entity-Relationship using specified pre-trained model, saving the output to S3.
 5. Pipeline Component 3 - Do data validation and data quality check on the model output.
 6. Pipeline Component 4 - From S3, upload the output to Neo4j Managed Graph Database AuraDB, for further insight explorations using Neo4j suite of visualisation tools.
+
 <br>
+
 <b>Files Overview:</b>
 
 ```
