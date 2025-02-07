@@ -7,6 +7,8 @@ import os
 from io import StringIO
 import pandas as pd
 import re
+import datetime
+from pytz import timezone
 
 
 # Connection class
@@ -33,6 +35,7 @@ class AWSConnection:
             return self.session.client(client_name)
         else:
             raise Exception("AWS session not initialized properly.")
+
 
 # S3 Service Class
 class S3:
@@ -103,6 +106,24 @@ class S3:
         except Exception as e:
             print(f"Error reading file from S3: {e}")
             return None
+        
+
+    def check_file_update(self, bucket_name, file_path):
+        sg_timezone = timezone("Asia/Singapore")
+
+        response = self.s3.head_object(Bucket=bucket_name, Key=file_path)
+        last_modified = response['LastModified'].astimezone(sg_timezone)
+
+        # Convert to UTC date for comparison
+        last_modified_date = last_modified.date()
+        today = datetime.datetime.now(sg_timezone).date()
+
+        if last_modified_date == today:
+            print(f"✅ File '{bucket_name}' was updated today ({last_modified_date}).")
+            return True
+        else:
+            print(f"❌ File '{bucket_name}' was last modified on {last_modified_date}, no new updates.")
+            return False
 
 
 class ECS:
