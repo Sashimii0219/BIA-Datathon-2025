@@ -133,10 +133,12 @@ This repository contains the project for the BIA Datathon 2025. The main objecti
 1. Automate data ingestion through 3 ways - Scheduled web scraping, Extracting data from internal pdf files using OCR, and manually calling the API to upload data.
 2. Daily schedule for lambda function to check for changes in S3 bucket, which will then trigger the pipeline to run.
 3. Pipeline Component 1 - Pre-process the text data to feed into the pre-trained model.
-4. Pipeline Component 2 - Validate the data to ensure XXX
-5. Pipeline Component 3 - Extract Entity-Relationship using specified pre-trained model, saving the output to S3.
+4. Pipeline Component 2 - Extract Entity-Relationship using specified pre-trained model, saving the output to S3.
+5. Pipeline Component 3 - Do data validation and data quality check on the model output.
 6. Pipeline Component 4 - From S3, upload the output to Neo4j Managed Graph Database AuraDB, for further insight explorations using Neo4j suite of visualisation tools.
+
 <br>
+
 <b>Files Overview:</b>
 
 ```
@@ -189,7 +191,51 @@ This repository contains the project for the BIA Datathon 2025. The main objecti
 
 <br>
 
-As the components in this pipeline are modular, to makes any changes you may make edits to the json text in XXX.
+As the components in this pipeline are modular, to makes any changes you may make edits to this json text in init_pipeline.py:
+
+```
+    state_machine_definition = f'''
+    {{
+    "Comment": "State Machine to XXX",
+    "StartAt": "RunEcsTask_XXX",
+    "States": {{
+        "RunEcsTask_XXX": {{
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {{
+                "Cluster": "{cluster_name}",
+                "TaskDefinition": "{preprocess_task_definition_arn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {{
+                    "AwsvpcConfiguration": {{
+                        "Subnets": ["{subnet_id}"],
+                        "AssignPublicIp": "ENABLED"
+                    }}
+                }}
+            }},
+            "Next": "RunEcsTask_Model"
+      ...
+      ...
+      ...
+        "RunEcsTask_Neo4j": {{
+            "Type": "Task",
+            "Resource": "arn:aws:states:::ecs:runTask.sync",
+            "Parameters": {{
+                "Cluster": "{cluster_name}",
+                "TaskDefinition": "{neo4j_task_definition_arn}",
+                "LaunchType": "FARGATE",
+                "NetworkConfiguration": {{
+                    "AwsvpcConfiguration": {{
+                        "Subnets": ["{subnet_id}"],
+                        "AssignPublicIp": "ENABLED"
+                    }}
+                }}
+            }},
+            "End": true
+        }}
+    }}
+    }}'''
+```
 
 <br>
 
