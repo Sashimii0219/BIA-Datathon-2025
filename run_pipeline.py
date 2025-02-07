@@ -3,7 +3,7 @@ from functions.aws_utils import *
 from dotenv import load_dotenv
 import os       
 import json
-import datetime
+
     
 if __name__ == "__main__":
     
