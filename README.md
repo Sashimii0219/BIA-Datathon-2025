@@ -49,7 +49,8 @@
 <b>To replicate this project:</b>
 1. Clone the repository.
 2. Install dependencies via `pip install -r requirements.txt`.
-3. Run the `main.py` script, which will do the following:
+3. Set up [AWS Free Tier account](https://aws.amazon.com/free/?gclid=CjwKCAiA2JG9BhAuEiwAH_zf3j1LSj1X3BgtSQc7omWpjF96REvmEKMb_sGDIvE2Zzd_BtTwhFeohhoC_z8QAvD_BwE&trk=f42fef03-b1e6-4841-b001-c44b4eccaf41&sc_channel=ps&ef_id=CjwKCAiA2JG9BhAuEiwAH_zf3j1LSj1X3BgtSQc7omWpjF96REvmEKMb_sGDIvE2Zzd_BtTwhFeohhoC_z8QAvD_BwE:G:s&s_kwcid=AL!4422!3!698779433890!e!!g!!aws%20free!19044205571!139090166610&all-free-tier.sort-by=item.additionalFields.SortRank&all-free-tier.sort-order=asc&awsf.Free%20Tier%20Types=*all&awsf.Free%20Tier%20Categories=*all) and [Neo4j account](https://neo4j.com/product/auradb/?utm_source=GSearch&utm_medium=PaidSearch&utm_campaign=Evergreen&utm_content=APAC-Search-SEMCE-DSA-None-SEM-SEM-NonABM&utm_term=&utm_adgroup=DSA&gad_source=1&gclid=CjwKCAiA2JG9BhAuEiwAH_zf3nOpX0fyARpJ4Rg9n6VSi5WSAo_CsMlaIgaWd0rz4iph_K-y85gEsRoCX1IQAvD_BwE).
+4. Run the `init_pipeline.py` script, which will do the following:
   -  Creates the images required for pipeline to work
   -  Initializes the step function
   -  Creates the images for the lambda functions, including the one that triggers the pipeline daily.
