@@ -63,40 +63,45 @@ class S3:
 
 
     # Upload files to S3
-    def upload_to_s3(self, bucket_name, prefix, file_name, df):
+    def upload_to_s3(self, bucket_name, prefix, file_name, file, df=True):
 
         # file_path e.g. clean_data/
 
-        # Create an in-memory buffer
-        csv_buffer = StringIO()
+        if df:
+            # Create an in-memory buffer
+            csv_buffer = StringIO()
 
-        # Write the df to the buffer
-        df.to_csv(csv_buffer, index=False)
+            # Write the df to the buffer
+            file.to_csv(csv_buffer, index=False)
+            file = csv_buffer.getvalue()
 
         s3_file_path = f"{prefix}/{file_name}"
 
         try:
             # Uploading file
-            self.s3.put_object(Bucket=bucket_name, Key=s3_file_path, Body=csv_buffer.getvalue())
-            print(f"CSV file '{file_name}' has been uploaded to S3 at '{s3_file_path}'")
+            self.s3.put_object(Bucket=bucket_name, Key=s3_file_path, Body=file)
+            print(f"file '{file_name}' has been uploaded to S3 at '{s3_file_path}'")
 
         except Exception as e:
-            print(f"Error uploading CSV to S3: {e}")
+            print(f"Error uploading file to S3: {e}")
 
 
 
     # Read file from S3
-    def read_from_s3(self, bucket_name, file_path):
+    def read_from_s3(self, bucket_name, file_path, df=True):
         try:
             response = self.s3.get_object(Bucket=bucket_name, Key=file_path)
             # Read the CSV file directly from S3 into a DataFrame
-            df = pd.read_csv(response['Body'])  # 'Body' contains the file content
+
+            output = response['Body']
+            if df:
+                output = pd.read_csv(output)  # 'Body' contains the file content
             
-            print(f"CSV file from {file_path} successfully loaded into DataFrame.")
-            return df
+            print(f"file from {file_path} successfully loaded.")
+            return output
         
         except Exception as e:
-            print(f"Error reading CSV from S3: {e}")
+            print(f"Error reading file from S3: {e}")
             return None
 
 
@@ -162,7 +167,7 @@ class ECS:
                 ['docker', 'login', '--username', 'AWS', '--password-stdin', ecr_repo_uri],
                 input=login_password.encode("utf-8")
             )
-            print("CHECKPOINT")
+
             # Tag the image
             docker_tag = f"{ecr_repo_uri}:{image_name}"
             subprocess.check_call(['docker', 'tag', image_name, docker_tag])
@@ -240,15 +245,15 @@ class StepFunction:
         self.sf_client = aws_connection.get_client("stepfunctions")
         self.region = aws_connection.region_name    
 
-    def create_step_function(self, state_machine_definition, role_arn):
+    def create_step_function(self, state_machine_name, state_machine_definition, role_arn):
         # Create the state machine
         try:
             response = self.sf_client.create_state_machine(
-                name="Datathon2025StateMachine",
+                name=state_machine_name,
                 definition=state_machine_definition,
                 roleArn=role_arn
             )
-
+            
             return response['stateMachineArn']
         
         except Exception as e:
@@ -293,58 +298,4 @@ class StepFunction:
         except Exception as e:
             print(f"Error getting execution status: {e}")
             return None
-        
-# Usage
-if __name__ == "__main__":
-
-    load_dotenv()
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
-    
-    deployer = ECS(aws_access_key_id=AWS_ACCESS_KEY_ID, 
-                   aws_secret_access_key=AWS_SECRET_KEY)
-    
-    task_definition_arn = deployer.deploy(
-        repo_name="datathon2025",  # ECR repository name
-        image_name="preprocess",  # Docker image name
-        dockerfile_path="./Dockerfiles/Dockerfile.preprocess",
-        task_name="datathon-preprocess",  # ECS task definition name
-        cluster_name="datathon2025-cluster"  # ECS cluster name
-    )
-
-    print(task_definition_arn)
-    cluster_name='datathon2025-cluster'
-    subnet_id='subnet-04676f82c6c4baf59'
-
-    state_machine_definition = f'''
-    {{
-    "Comment": "State Machine to run an ECS task",
-    "StartAt": "RunEcsTask",
-    "States": {{
-        "RunEcsTask": {{
-            "Type": "Task",
-            "Resource": "arn:aws:states:::ecs:runTask.sync",
-            "Parameters": {{
-                "Cluster": "{cluster_name}",
-                "TaskDefinition": "{task_definition_arn}",
-                "LaunchType": "FARGATE",
-                "NetworkConfiguration": {{
-                    "AwsvpcConfiguration": {{
-                        "Subnets": ["{subnet_id}"],
-                        "AssignPublicIp": "ENABLED"
-                    }}
-                }}
-            }},
-            "End": true
-        }}
-    }}
-    }}'''
-    print(state_machine_definition)
-    sf = StepFunction(aws_access_key_id=AWS_ACCESS_KEY_ID, 
-                   aws_secret_access_key=AWS_SECRET_KEY)
-    
-    state_machine_arn = sf.create_step_function(state_machine_definition,
-                            'arn:aws:iam::484907528704:role/StepFunctionsExecutionRole')
-    
-    sf.start_step_function_execution(state_machine_arn)
         

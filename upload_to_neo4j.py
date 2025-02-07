@@ -40,10 +40,10 @@ if __name__ == "__main__":
     
     # Retrieve dfs
     entities_df = s3.read_from_s3('datathon2025',
-                              f'data/model-output/entities_df_{method}.csv')
+                              f'data/validation/entities_df_{method}.csv')
 
     relationships_df = s3.read_from_s3('datathon2025',
-                              f'data/model-output/relationships_df_{method}.csv')
+                              f'data/validation/relationships_df_{method}.csv')
     
     # Initialize connection to Neo4j
     dbconn = Neo4jConnection(URI, AUTH[0], AUTH[1])

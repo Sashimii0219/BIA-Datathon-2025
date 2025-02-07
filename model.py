@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # Read data from S3
     input_data = s3.read_from_s3('datathon2025',
-                              'data/clean-data/merged_df.csv')
+                              'data/preprocess/merged_df.csv')
     text_col = input_data['coref_text'].tolist()
 
     start_time = time.time()

@@ -1,5 +1,26 @@
 import pandas as pd
 import re
+import argparse
+from functions.aws_utils import *
+
+from dotenv import load_dotenv
+import os
+
+# Create argument parser
+parser = argparse.ArgumentParser(description="Process some inputs.")
+
+# Define arguments
+parser.add_argument(
+    "-m",
+    "--method",
+    type=str,
+    default='relik',
+    help="Currently Available Methods: relik, mrebel"
+    )
+
+# Parse arguments
+args = parser.parse_args()
+method = args.method
 
 class TripletValidationPipeline:
     def __init__(self, relationships_df):
@@ -77,17 +98,33 @@ class TripletValidationPipeline:
 
 # Example usage
 if __name__ == "__main__":
+
     # Sample DataFrame
-    data = {
-        'subject': ['Asia', '123', 'USA', 'AI', 'Europe', "", "twin towers"],
-        'object': ['continent', '456', 'country', 'technology', 'region', "food", "America"],
-        'subject_entity_type': ['LOC', 'NUM', 'LOC', 'PRODUCT', 'LOC', "UNDEFINED", "OBJECT"],
-        'object_entity_type': ['LOC', 'NUM', 'LOC', 'PRODUCT', 'LOC', "PRODUCT", "LOC"]
-    }
-    df = pd.DataFrame(data)
+    # data = {
+    #     'subject': ['Asia', '123', 'USA', 'AI', 'Europe', "", "twin towers"],
+    #     'object': ['continent', '456', 'country', 'technology', 'region', "food", "America"],
+    #     'subject_entity_type': ['LOC', 'NUM', 'LOC', 'PRODUCT', 'LOC', "UNDEFINED", "OBJECT"],
+    #     'object_entity_type': ['LOC', 'NUM', 'LOC', 'PRODUCT', 'LOC', "PRODUCT", "LOC"]
+    # }
+    # df = pd.DataFrame(data)
+
+    load_dotenv()
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
+
+        # Create S3 instance
+    s3 = S3(aws_access_key_id=AWS_ACCESS_KEY_ID, 
+            aws_secret_access_key=AWS_SECRET_KEY)
+    
+        # Retrieve dfs
+    entities_df = s3.read_from_s3('datathon2025',
+                              f'data/model-output/entities_df_{method}.csv')
+
+    relationships_df = s3.read_from_s3('datathon2025',
+                              f'data/model-output/relationships_df_{method}.csv')
 
     # Create pipeline and apply transformations
-    pipeline = TripletValidationPipeline(df)
+    pipeline = TripletValidationPipeline(relationships_df)
     cleaned_df = (
         pipeline
         .check_null()
@@ -95,9 +132,14 @@ if __name__ == "__main__":
         .replace_special_char()
         .get_cleaned_data()
     )
-
-    print("\nOld DataFrame:")
-    print(df)
     
-    print("\nCleaned DataFrame:")
-    print(cleaned_df)
+            # Upload output to S3
+    s3.upload_to_s3('datathon2025',
+                    'data/validation',
+                    'clean_relationships_df.csv',
+                    cleaned_df)
+    
+    s3.upload_to_s3('datathon2025',
+                    'data/validation',
+                    'clean_entities_df.csv',
+                    entities_df)
