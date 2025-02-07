@@ -10,6 +10,12 @@
 
 <br>
 
+<b>Solution Architecture:</b>
+
+
+
+<br>
+
 <b>Files Overview:</b>
 
 ```
