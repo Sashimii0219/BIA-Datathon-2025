@@ -1,0 +1,6 @@
+pandas
+coreferee==1.4.1
+spacy==3.5.0
+numpy==1.26.4
+python-dotenv
+boto3

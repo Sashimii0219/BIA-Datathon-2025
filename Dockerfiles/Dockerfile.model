@@ -1,0 +1,20 @@
+# Use an official Python runtime as a parent image
+FROM --platform=linux/amd64 python:3.10.16
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy requirements file and install dependencies
+COPY requirements/model.txt .
+RUN pip install --no-cache-dir -r model.txt
+
+# Download the SpaCy language model
+RUN python -m spacy download en_core_web_sm
+
+# Copy the preprocessing script and utility functions
+COPY model.py .
+COPY functions/ functions/
+COPY .env .env
+
+# Run the script when the container launches
+CMD ["python", "model.py", "-m", "relik"]
